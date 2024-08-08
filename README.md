@@ -282,3 +282,174 @@ php artisan serve
 
 **Penjelasan:**
 - **php artisan serve:** Menjalankan server pengembangan Laravel sehingga Anda dapat mengakses aplikasi melalui browser.
+
+## Membuat Fitur Register dan Login
+
+### Langkah 1: Membuat Model dan Controller
+
+1. **Model User**: Model `User` sudah disediakan oleh Laravel di `app/Models/User.php`.
+2. **Auth Controller**: Buat controller untuk autentikasi.
+   ```bash
+   php artisan make:controller AuthController
+   ```
+
+### Langkah 4: Membuat Routes
+
+Tambahkan routes di file `routes/web.php`:
+```php
+use App\Http\Controllers\AuthController;
+
+Route::get('register', [AuthController::class, 'showRegisterForm'])->name('register');
+Route::post('register', [AuthController::class, 'register']);
+
+Route::get('login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('login', [AuthController::class, 'login']);
+```
+
+### Langkah 5: Membuat Form Register
+
+Buat view untuk form register di `resources/views/register.blade.php`:
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register</title>
+</head>
+<body>
+    <form action="{{ route('register') }}" method="POST">
+        @csrf
+        <div>
+            <label for="name">Name</label>
+            <input type="text" name="name" id="name" required>
+        </div>
+        <div>
+            <label for="email">Email</label>
+            <input type="email" name="email" id="email" required>
+        </div>
+        <div>
+            <label for="password">Password</label>
+            <input type="password" name="password" id="password" required>
+        </div>
+        <div>
+            <label for="password_confirmation">Confirm Password</label>
+            <input type="password" name="password_confirmation" id="password_confirmation" required>
+        </div>
+        <div>
+            <button type="submit">Register</button>
+        </div>
+    </form>
+</body>
+</html>
+```
+
+### Langkah 6: Membuat Form Login
+
+Buat view untuk form login di `resources/views/login.blade.php`:
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+</head>
+<body>
+    <form action="{{ route('login') }}" method="POST">
+        @csrf
+        <div>
+            <label for="email">Email</label>
+            <input type="email" name="email" id="email" required>
+        </div>
+        <div>
+            <label for="password">Password</label>
+            <input type="password" name="password" id="password" required>
+        </div>
+        <div>
+            <button type="submit">Login</button>
+        </div>
+    </form>
+</body>
+</html>
+```
+
+### Langkah 7: Implementasi Register dan Login di Controller
+
+Edit `AuthController` untuk menambahkan logika register dan login:
+```php
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+
+class AuthController extends Controller
+{
+    // Menampilkan form register
+    public function showRegisterForm()
+    {
+        return view('register');
+    }
+
+    // Proses register
+    public function register(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        return redirect()->route('login')->with('success', 'Registration successful, please login.');
+    }
+
+    // Menampilkan form login
+    public function showLoginForm()
+    {
+        return view('login');
+    }
+
+    // Proses login
+    public function login(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|string|email',
+            'password' => 'required|string',
+        ]);
+
+        if (Auth::attempt($request->only('email', 'password'))) {
+            return redirect()->intended('dashboard');
+        }
+
+        throw ValidationException::withMessages([
+            'email' => [trans('auth.failed')],
+        ]);
+    }
+}
+```
+
+### Penjelasan Kode
+
+1. **Form Register**: Form ini mengirim data ke route `register` menggunakan metode `POST`. Menggunakan `@csrf` untuk melindungi dari serangan CSRF.
+2. **Form Login**: Mirip dengan form register, tetapi untuk login.
+3. **AuthController**:
+   - `showRegisterForm()`: Menampilkan view register.
+   - `register()`: Memvalidasi data, membuat pengguna baru, dan mengenkripsi password menggunakan `Hash::make()`.
+   - `showLoginForm()`: Menampilkan view login.
+   - `login()`: Memvalidasi data dan menggunakan `Auth::attempt()` untuk mencoba login. Jika berhasil, diarahkan ke `dashboard`.
+
+### Langkah 8: Menambahkan Middleware Auth
+
+Pastikan halaman `dashboard` atau halaman lainnya dilindungi middleware auth. Tambahkan di `routes/web.php`:
+```php
+Route::get('dashboard', function () {
+    return 'Welcome to your dashboard!';
+})->middleware('auth');
+```
+
+Dengan langkah-langkah ini, Anda akan memiliki sistem login dan register dasar di Laravel tanpa menggunakan scaffolding. Anda bisa mengembangkan lebih lanjut dengan menambahkan fitur-fitur tambahan seperti logout, reset password, dan lainnya.
